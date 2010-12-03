@@ -170,6 +170,9 @@ class Service(object):
     
   def push(self, ssh_options, file):
     raise Exception("Unimplemented")
+
+  def pull(self, ssh_options, file, remote_file):
+    raise Exception("Unimplemented")
     
   def execute(self, ssh_options, args):
     raise Exception("Unimplemented")
@@ -208,6 +211,8 @@ class Service(object):
       "USER_PACKAGES": it.user_packages,
       "AUTO_SHUTDOWN": it.auto_shutdown,
       "EBS_MAPPINGS": ebs_mappings,
+      "AWS_ACCESS_KEY_ID": it.public_key,
+      "AWS_SECRET_ACCESS_KEY": it.private_key,
     }) }
     instance_user_data = InstanceUserData(user_data_file_template, replacements)
     instance_ids = self.cluster.launch_instances(it.roles, it.number, it.image_id,
@@ -322,6 +327,24 @@ echo Proxy pid %s;""" % (process.pid, process.pid)
     subprocess.call('scp %s -r %s root@%s:' % (xstr(ssh_options),
                                                file, master.public_ip),
                                                shell=True)
+
+  def pull(self, ssh_options, remote_file, file):
+    master = self._get_master()
+    if not master:
+      sys.exit(1)
+    subprocess.call('scp %s -r root@%s:%s %s' % (xstr(ssh_options),
+                                                master.public_ip,remote_file,file),
+                                               shell=True)
+
+  def rsync(self, ssh_options, remote_directory, local_directory):
+    master = self._get_master()
+    if not master:
+      sys.exit(1)
+      
+    return subprocess.Popen('rsync -ave "ssh %s" -r root@%s:%s %s' % (xstr(ssh_options),
+                                                master.public_ip,remote_directory,local_directory),
+                                               shell=True,stdout=subprocess.PIPE)
+										
     
   def execute(self, ssh_options, args):
     master = self._get_master()
